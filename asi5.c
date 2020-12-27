@@ -2,6 +2,7 @@
 /*** SMTP_server_thread.c                                                  ***/
 /***                                                                       ***/
 /*** Compile : gcc SMTP_server_thread.c -o SMTP_server_thread -lpthread    ***/
+/*** Compile : gcc asi5.c -o asi5 -lpthread -I../src -L.. -liniparser      ***/
 /*****************************************************************************/
 #include <stdlib.h>
 #include <errno.h>
@@ -15,7 +16,7 @@
 
 /* Definations */
 #define DEFAULT_BUFLEN 1024
-#define PORT <CHANGEME>
+#define PORT 6862 /*Server should take this port number from ini file*/
 
 /*Ini headers*/
 #include <stdio.h>
@@ -37,13 +38,12 @@ void* Child(void* arg)
     int bytes_read;
     int client = *(int *)arg;
     
-    char data[]="220 Sherzad.SMTP <sherzad.com>";
+    char data[]="220 Sherzad.SMTP <sherzad.com> \r\n";
     send(client, data,strlen(data),0);
 
     do
     {
     	
-    	/*
         bytes_read = recv(client, line, sizeof(line), 0);
         if (bytes_read > 0) {
                 if ( (bytes_read=send(client, line, bytes_read, 0)) < 0 ) {
@@ -56,7 +56,7 @@ void* Child(void* arg)
         } else {
                 printf("Connection has problem\n");
                 break;
-        }*/
+        }
         
     } while (bytes_read > 0);
     close(client);
