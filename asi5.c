@@ -1,9 +1,7 @@
 /*****************************************************************************/
-/*** echo_server_thread.c                                                  ***/
+/*** SMTP_server_thread.c                                                  ***/
 /***                                                                       ***/
-/*** An echo server using threads.                                         ***/
-/***                                                                       ***/
-/*** Compile : gcc echo_server_thread.c -o echo_server_thread -lpthread    ***/
+/*** Compile : gcc SMTP_server_thread.c -o SMTP_server_thread -lpthread    ***/
 /*****************************************************************************/
 #include <stdlib.h>
 #include <errno.h>
@@ -19,19 +17,33 @@
 #define DEFAULT_BUFLEN 1024
 #define PORT <CHANGEME>
 
+/*Ini headers*/
+#include <stdio.h>
+#include <dictionary.h>
+#include "iniparser.h"
+
+
+
 void PANIC(char* msg);
 #define PANIC(msg)  { perror(msg); exit(-1); }
+void create_example_ini_file(void);
+int  parse_ini_file(char * ini_name);
 
 /*--------------------------------------------------------------------*/
-/*--- Child - echo server                                         ---*/
+/*--- Child -                                                      ---*/
 /*--------------------------------------------------------------------*/
 void* Child(void* arg)
 {   char line[DEFAULT_BUFLEN];
     int bytes_read;
     int client = *(int *)arg;
+    
+    char data[]="220 Sherzad.SMTP <sherzad.com>";
+    send(client, data,strlen(data),0);
 
     do
     {
+    	
+    	/*
         bytes_read = recv(client, line, sizeof(line), 0);
         if (bytes_read > 0) {
                 if ( (bytes_read=send(client, line, bytes_read, 0)) < 0 ) {
@@ -44,7 +56,8 @@ void* Child(void* arg)
         } else {
                 printf("Connection has problem\n");
                 break;
-        }
+        }*/
+        
     } while (bytes_read > 0);
     close(client);
     return arg;
@@ -104,5 +117,54 @@ int main(int argc, char *argv[])
             pthread_detach(child);  /* disassociate from parent */
     }
     return 0;
+}
+
+/*For ini parser*/
+
+void create_example_ini_file(void)
+{
+    FILE    *   ini ;
+
+    if ((ini=fopen("example.ini", "w"))==NULL) {
+        fprintf(stderr, "iniparser: cannot create example.ini\n");
+        return ;
+    }
+
+    fprintf(ini,"It will read from a file here");
+    fclose(ini);
+}
+int parse_ini_file(char * ini_name)
+{
+    dictionary  *   ini ;
+
+    /* Some temporary variables to hold query results */
+    int             b ;
+    int             i ;
+    double          d ;
+    const char  *   s ;
+
+    ini = iniparser_load(ini_name);
+    if (ini==NULL) {
+        fprintf(stderr, "cannot parse file: %s\n", ini_name);
+        return -1 ;
+    }
+    iniparser_dump(ini, stderr);
+
+    /* Get pizza attributes */
+    printf("Server:\n");
+
+    printf("Cheese:    [%d]\n", b);
+
+    /* Get wine attributes */
+    printf("Server:\n");
+    s = iniparser_getstring(ini, "Server:welcom", NULL);
+    printf("Server:     [%s]\n", s ? s : "UNDEF");
+
+    i = iniparser_getint(ini, "Port:1888", -1);
+    printf("Port:      [%d]\n", i);
+
+
+    iniparser_freedict(ini);
+    return 0 ;
 }
 
