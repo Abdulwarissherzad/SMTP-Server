@@ -16,12 +16,24 @@
 
 /* Definations */
 #define DEFAULT_BUFLEN 1024
-#define PORT 6862 /*Server should take this port number from ini file*/
+
+/*Server should take this port number from ini file*/
+//#define PORT 6862 sever can read it from ini file
 
 /*Ini headers*/
 #include <stdio.h>
 #include <dictionary.h>
 #include "iniparser.h"
+
+/* Variables to hold query results */
+const char  *   listen_IP ;
+int             listen_port ;
+const char  *   server_root ;
+const char  *   server_name ;
+const char  *   domain_name ;
+const char  *   joe_user ;
+const char  *   jane_user ;
+const char  *   bob_user ;
 
 
 
@@ -38,7 +50,7 @@ void* Child(void* arg)
     int bytes_read;
     int client = *(int *)arg;
     
-    char data[]="220 Sherzad.SMTP <sherzad.com> \r\n";
+    char data[]="220 My Beautiful server <foo.com>\r\n";
     send(client, data,strlen(data),0);
 
     do
@@ -71,6 +83,9 @@ int main(int argc, char *argv[])
 {   int sd,opt,optval;
     struct sockaddr_in addr;
     unsigned short port=0;
+    int     status ;
+    
+    status = parse_ini_file("Server.ini"); /*Function call of iniparser, which is reading from ini file*/
 
     while ((opt = getopt(argc, argv, "p:")) != -1) {
         switch (opt) {
@@ -88,7 +103,7 @@ int main(int argc, char *argv[])
     if ( port > 0 )
                 addr.sin_port = htons(port);
     else
-                addr.sin_port = htons(PORT);
+                addr.sin_port = htons(listen_port);
 
     addr.sin_addr.s_addr = INADDR_ANY;
 
@@ -119,8 +134,8 @@ int main(int argc, char *argv[])
     return 0;
 }
 
-/*For ini parser*/
 
+/*I have to write code for file here*/
 void create_example_ini_file(void)
 {
     FILE    *   ini ;
@@ -129,41 +144,35 @@ void create_example_ini_file(void)
         fprintf(stderr, "iniparser: cannot create example.ini\n");
         return ;
     }
-
     fprintf(ini,"It will read from a file here");
     fclose(ini);
 }
+
+/*For ini parser*/
 int parse_ini_file(char * ini_name)
 {
     dictionary  *   ini ;
 
-    /* Some temporary variables to hold query results */
-    int             b ;
-    int             i ;
-    double          d ;
-    const char  *   s ;
-
     ini = iniparser_load(ini_name);
-    if (ini==NULL) {
-        fprintf(stderr, "cannot parse file: %s\n", ini_name);
+    if (ini==NULL)
+	{
+	    fprintf(stderr, "cannot parse file: %s\n", ini_name);
         return -1 ;
     }
     iniparser_dump(ini, stderr);
 
-    /* Get pizza attributes */
-    printf("Server:\n");
-
-    printf("Cheese:    [%d]\n", b);
-
-    /* Get wine attributes */
-    printf("Server:\n");
-    s = iniparser_getstring(ini, "Server:welcom", NULL);
-    printf("Server:     [%s]\n", s ? s : "UNDEF");
-
-    i = iniparser_getint(ini, "Port:1888", -1);
-    printf("Port:      [%d]\n", i);
-
-
+    /* Get Server attributes */
+	listen_IP = iniparser_getstring(ini, "server:ListenIp", NULL);
+    listen_port = iniparser_getint(ini, "server:ListenPort", -1);
+    server_root = iniparser_getstring(ini, "server:ServerRoot", NULL);
+    server_name = iniparser_getstring(ini, "server:ServerName", NULL);
+    domain_name = iniparser_getstring(ini, "server:DomainName", NULL);
+    
+    /* Get User attributes */
+    joe_user = iniparser_getstring(ini, "users:joe", NULL);
+    jane_user = iniparser_getstring(ini, "users:jane", NULL);
+    bob_user = iniparser_getstring(ini, "bob:joe", NULL);
+    
     iniparser_freedict(ini);
     return 0 ;
 }
