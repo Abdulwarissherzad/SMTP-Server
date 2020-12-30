@@ -3,6 +3,7 @@
 /***                                                                       ***/
 /*** Compile : gcc asi5.c -o asi5 -lpthread -I../src -L.. -liniparser      ***/
 /*****************************************************************************/
+#include <stdio.h>
 #include <stdlib.h>
 #include <errno.h>
 #include <unistd.h>
@@ -19,7 +20,6 @@
 
 
 /*Ini headers*/
-#include <stdio.h>
 #include <dictionary.h>
 #include "iniparser.h"
 
@@ -54,8 +54,12 @@ void* Child(void* arg)
 {   char line[DEFAULT_BUFLEN];
     int bytes_read;
     int client = *(int *)arg;
+    
     char * rec_domain;
     char * rec_email;
+    char * rec_username;
+    char * rec_user_domain;
+    
     
     char data[150];
     char data1[150];
@@ -114,10 +118,27 @@ void* Child(void* arg)
      	        fclose(fptr);
         	
 		}
-    	
+		else if(strstr(line,"RCPT TO: ")){
+			
+			rec_username = strtok(line+9,"@");
+
+			if((strcmp(rec_username,"joe") !=0) && (strcmp(rec_username,"jane") !=0) && (strcmp(rec_username,"bob") !=0))
+			{
+				//Note: If it was correct it will execute else otherwise inside if we execute
+				sprintf(data1,"Recipient user name or domain is not correct!\n");
+             	send(client, data1,strlen(data1),0);
+			}
+			else 
+			{
+				sprintf(data1,"250 %s@foo.com ... Recipient ok\n",rec_username);
+             	send(client, data1,strlen(data1),0);
+			}
+
+			
+		}
 	    else
     	{
-		    sprintf(data1,"Try again you enter wrong commend: ");
+		    sprintf(data1,"Try again you enter wrong commend \n");
 	    	send(client, data1,strlen(data1),0);
 		    send(client, line,strlen(line),0);
     	}
@@ -257,10 +278,11 @@ int parse_ini_file(char * ini_name)
     /* Get User attributes */
     joe_user = iniparser_getstring(ini, "users:joe", NULL);
     sprintf(joe_user1 ,"%s",joe_user);
+    bob_user = iniparser_getstring(ini, "users:bob", NULL);
+    sprintf(bob_user3 ,"%s",bob_user);
     jane_user = iniparser_getstring(ini, "users:jane", NULL);
     sprintf(jane_user2 ,"%s",jane_user);
-    bob_user = iniparser_getstring(ini, "bob:joe", NULL);
-    //sprintf(bob_user3 ,"%s",bob_user);
+
     
     iniparser_freedict(ini);
     return 0 ;
