@@ -55,47 +55,75 @@ void* Child(void* arg)
     int bytes_read;
     int client = *(int *)arg;
     char * rec_domain;
+    char * rec_email;
     
-    char data[DEFAULT_BUFLEN];
-    char data1[DEFAULT_BUFLEN];
+    char data[150];
+    char data1[150];
+    int con_flag=0;
 
 
-    do
-    {
-    sprintf(data,"220 %s <%s>\n",ser_name,dom_name);
+	sprintf(data,"220 %s <%s>\n",ser_name,dom_name);
     send(client, data,strlen(data),0);
     memset(data,0,strlen(data));
-    
-    recv(client, line, sizeof(line), 0);
-	if(strstr(line,"HELO ") !=0){
-    rec_domain = strtok(line+5,"\n");
-    
-    
-    /*Reading from a file for band*/
-    fptr = fopen("ban_domain.cfg", "r");
 
-    // Find index of word in fptr
-    indexOf(fptr, rec_domain, &lin, &col);
+    do{
+		memset(line,0,strlen(line));
+        bytes_read = recv(client, line, sizeof(line), 0);
+        
+    	if(strstr(line,"HELO ") !=0 )
+		{
+            rec_domain = strtok(line+5,"\n");
     
-    if (lin != -1 ){
-	    sprintf(data1,"Sorry! your domain is banned, you can not contenue...\n");
-	    send(client, data1,strlen(data1),0);
-	    close(client);
-	}else{
-	sprintf(data1,"250 Hello %s, pleased to meet you\n",rec_domain);
-	send(client, data1,strlen(data1),0);
-	}
-	fclose(fptr);
-	}
-	else
-	{
-		sprintf(data1,"Try again you enter wrong commend:%s",line);
-		send(client, data1,strlen(data1),0);
-		
-	}
+            /*Reading from a file for ban domain*/
+            fptr = fopen("ban_domain.cfg", "r");
 
+            // Find index of word in fptr
+             indexOf(fptr, rec_domain, &lin, &col);
+    
+            if (lin != -1 ){
+        	
+	            sprintf(data1,"Sorry! your domain is banned, you can not contenue...\n");
+	            send(client, data1,strlen(data1),0);
+	            close(client);
+     	    }else{
+             	sprintf(data1,"250 Hello %s, pleased to meet you\n",rec_domain);
+             	send(client, data1,strlen(data1),0);
+	            }
+     	        fclose(fptr);
+    	}
+        else if(strstr(line,"MAIL FROM: ") != 0)
+		{
+        	
+        	rec_email = strtok(line+11,"\n");
 
-    } while (bytes_read > 0);
+			/*Reading and checking from a file for ban email*/
+            fptr = fopen("ban_email.cfg", "r");
+
+            // Find index of word in fptr
+             indexOf(fptr, rec_email, &lin, &col);
+
+            if (lin != -1 ){
+
+	            sprintf(data1,"Sorry! your email is banned, you can not contenue...\n");
+	            send(client, data1,strlen(data1),0);
+	            close(client);
+     	    }else{
+             	sprintf(data1,"250 %s ... Sender ok\n",rec_email);
+             	send(client, data1,strlen(data1),0);
+	            }
+     	        fclose(fptr);
+        	
+		}
+    	
+	    else
+    	{
+		    sprintf(data1,"Try again you enter wrong commend: ");
+	    	send(client, data1,strlen(data1),0);
+		    send(client, line,strlen(line),0);
+    	}
+
+    	
+    } while (1);
     close(client);
     return arg;
 }
