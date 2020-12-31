@@ -23,6 +23,9 @@
 #include <dictionary.h>
 #include "iniparser.h"
 
+/*For time*/
+#include <time.h>
+
 void PANIC(char* msg);
 #define PANIC(msg)  { perror(msg); exit(-1); }
 
@@ -57,9 +60,10 @@ void* Child(void* arg)
     
     char * rec_domain;
     char * rec_email;
-    char * rec_copy;
     char * rec_username;
     char * rec_user_domain;
+    char * rec_username_copy;
+    
     
     
     char data[150];
@@ -125,6 +129,7 @@ void* Child(void* arg)
 		//	rec_user_domain =strrchr(line,"@");
 			rec_username = strtok(line+9,"@");
 		//	rec_user_domain = strtok(NULL," ");
+        	strcpy(rec_username_copy,rec_username);
 
 			if((strcmp(rec_username,"joe") !=0) && (strcmp(rec_username,"jane") !=0) && (strcmp(rec_username,"bob") !=0))
 			{
@@ -147,18 +152,35 @@ void* Child(void* arg)
 
 			sprintf(data1,"354 Enter mail, end with \".\" on a line by itself\n");
             send(client, data1,strlen(data1),0);
+            /*For time */
+            time_t ti = time(NULL);
+            struct tm tm = *localtime(&ti);
 
+			char file_write[40];
+			
+			if(strcmp(rec_username_copy,"joe")==0){
+				
+                sprintf(file_write,"%s%s/%d%d%d%d%d.mbox",ser_root,joe_user1,tm.tm_year + 1900, tm.tm_mon + 1, tm.tm_mday, tm.tm_hour, tm.tm_min);
+			}else if(strcmp(rec_username_copy,"jane")==0){
 
+				sprintf(file_write,"%s%s/%d%d%d%d%d.mbox",ser_root,jane_user2,tm.tm_year + 1900, tm.tm_mon + 1, tm.tm_mday, tm.tm_hour, tm.tm_min);
+			}else if(strcmp(rec_username_copy,"bob")==0){
+
+				sprintf(file_write,"%s%s/%d%d%d%d%d.mbox",ser_root,bob_user3,tm.tm_year + 1900, tm.tm_mon + 1, tm.tm_mday, tm.tm_hour, tm.tm_min);
+			}
+
+			fptr = fopen(file_write, "w");
+			
 		    do{
 		    	
-		       memset(line,0,strlen(line));
-		       bytes_read= recv(client, line, sizeof(line), 0);
-		    
-            	sprintf(data,"Data is recived recived\n");
-                send(client, data,strlen(data),0);
-                
+		        memset(line,0,strlen(line));
+		        bytes_read= recv(client, line, sizeof(line), 0);
+                fputs(line,fptr);
 			}while(strcmp(line,".\n") != 0);
-
+			 fclose(fptr);
+			 
+			 sprintf(line,"250 Message accepted for delivery\n");
+             send(client, line,strlen(line),0);
 		}
 	    else
     	{
