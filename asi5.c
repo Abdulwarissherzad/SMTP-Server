@@ -57,6 +57,7 @@ void* Child(void* arg)
     
     char * rec_domain;
     char * rec_email;
+    char * rec_copy;
     char * rec_username;
     char * rec_user_domain;
     
@@ -74,6 +75,7 @@ void* Child(void* arg)
 		memset(line,0,strlen(line));
         bytes_read = recv(client, line, sizeof(line), 0);
         
+      //  strcpy(rec_copy,line);
     	if(strstr(line,"HELO ") !=0 )
 		{
             rec_domain = strtok(line+5,"\n");
@@ -120,32 +122,54 @@ void* Child(void* arg)
 		}
 		else if(strstr(line,"RCPT TO: ")){
 			
+		//	rec_user_domain =strrchr(line,"@");
 			rec_username = strtok(line+9,"@");
+		//	rec_user_domain = strtok(NULL," ");
 
 			if((strcmp(rec_username,"joe") !=0) && (strcmp(rec_username,"jane") !=0) && (strcmp(rec_username,"bob") !=0))
 			{
 				//Note: If it was correct it will execute else otherwise inside if we execute
-				sprintf(data1,"Recipient user name or domain is not correct!\n");
+				sprintf(data1,"Recipient user name is not exist!\n");
              	send(client, data1,strlen(data1),0);
-			}
-			else 
+			}/*
+			else if ( strncmp(rec_user_domain,dom_name,strlen(rec_user_domain)) != 0 ){
+				sprintf(data1,"Recipient domain is not exist!: %s\t ,:%s",rec_user_domain,dom_name);
+             	send(client, data1,strlen(data1),0);
+			}*/
+			else
 			{
 				sprintf(data1,"250 %s@foo.com ... Recipient ok\n",rec_username);
              	send(client, data1,strlen(data1),0);
 			}
+		}
+		else if(strcmp(line,"DATA"))
+		{
 
-			
+			sprintf(data1,"354 Enter mail, end with \".\" on a line by itself\n");
+            send(client, data1,strlen(data1),0);
+
+
+		    do{
+		    	
+		       memset(line,0,strlen(line));
+		       bytes_read= recv(client, line, sizeof(line), 0);
+		    
+            	sprintf(data,"Data is recived recived\n");
+                send(client, data,strlen(data),0);
+                
+			}while(strcmp(line,".\n") != 0);
+
 		}
 	    else
     	{
-		    sprintf(data1,"Try again you enter wrong commend \n");
+		    sprintf(data1,"Try again you enter wrong commend:");
 	    	send(client, data1,strlen(data1),0);
 		    send(client, line,strlen(line),0);
     	}
 
-    	
-    } while (1);
-    close(client);
+    } while (bytes_read>0);
+    close (client);
+    
     return arg;
 }
 
@@ -274,14 +298,15 @@ int parse_ini_file(char * ini_name)
     strcpy(ser_name ,server_name);
     domain_name = iniparser_getstring(ini, "server:DomainName", NULL);
     strcpy(dom_name ,domain_name);
-
+    
+	/*we assign const char to char because outside the function we can take value.by help of strcpy*/
     /* Get User attributes */
     joe_user = iniparser_getstring(ini, "users:joe", NULL);
     sprintf(joe_user1 ,"%s",joe_user);
-    bob_user = iniparser_getstring(ini, "users:bob", NULL);
-    sprintf(bob_user3 ,"%s",bob_user);
     jane_user = iniparser_getstring(ini, "users:jane", NULL);
     sprintf(jane_user2 ,"%s",jane_user);
+    bob_user = iniparser_getstring(ini, "users:bob", NULL);
+    sprintf(bob_user3 ,"%s",bob_user);
 
     
     iniparser_freedict(ini);
