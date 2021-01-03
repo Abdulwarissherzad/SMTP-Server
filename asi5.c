@@ -1,8 +1,12 @@
 /*****************************************************************************/
 /*** SMTP_server_thread.c                                                  ***/
 /***                                                                       ***/
-/*** Compile : gcc asi5.c -o asi5 -lpthread -I../src -L.. -liniparser      ***/
+/*** Compile : gcc SMTP.c -o smtp -lpthread -I../src -L.. -liniparser      ***/
+/***                                                                       ***/
+/*** git clone https://github.com/Abdulwarissherzad/asi5.git               ***/
+/*** Copyright (c) 2020 Abdul waris sherzad.                               ***/
 /*****************************************************************************/
+
 #include <stdio.h>
 #include <stdlib.h>
 #include <errno.h>
@@ -18,7 +22,6 @@
 #define DEFAULT_BUFLEN 1024
 #define BUFFER_SIZE 1000
 
-
 /*Ini headers*/
 #include <dictionary.h>
 #include "iniparser.h"
@@ -32,16 +35,15 @@ void PANIC(char* msg);
 int  parse_ini_file(char * ini_name);
 int indexOf(FILE *fptr, const char *word, int *lin, int *col);
 
-/*We can not chang the content of cons char *, so we     */
-/*coppy it to char array variables to hold query results*/
+/*Char array variables to hold query results*/
 const char  *   listen_IP ;
 int             listen_port ;
 char ser_root[40]=" ";
 char ser_name[40]=" ";
-char  dom_name[10]=" ";
-char joe_user1[50]= " ";
-char jane_user2[50]= " ";
-char bob_user3[50]= " ";
+char dom_name[10]=" ";
+char joe_user1[50]=" ";
+char jane_user2[50]=" ";
+char bob_user3[50]=" ";
 
 /*For reading of a file from text*/
 FILE *fptr;
@@ -58,23 +60,20 @@ void* Child(void* arg)
     int bytes_read;
     int client = *(int *)arg;
     
-    char * rec_domain;
-    char * rec_email;
+	char * rec_email;
+	char * rec_domain;
     char * rec_username;
     char * rec_user_domain;
-    char * rec_username_copy;
-    char * rec_line;
 
-    
-    
-
-    char format[DEFAULT_BUFLEN];
     char data[150];
     char data1[150];
-    int con_flag=0;
-    int quit_flag = 0,reset_flag=0;
-
-
+	char re_user[5] ="";
+    char format[150] ="";
+    char re_email[10]="";
+    char format1[160] ="";
+    char domain_cpy[10]="";
+    
+	 // Greating message send to client
 	sprintf(data,"220 %s <%s>\n",ser_name,dom_name);
     send(client, data,strlen(data),0);
     memset(data,0,strlen(data));
@@ -83,17 +82,16 @@ void* Child(void* arg)
     	
 		memset(line,0,strlen(line));
         bytes_read = recv(client, line, sizeof(line), 0);
-        
-      //  strcpy(rec_copy,line);
       
-
 	    if (strcmp(line,"NOOP\n")==0){
-			
             send(client,"250 Ok\n",8,0);
 		}
-		else if(strstr(line,"RSET\n") !=0  ){
-			sprintf(data1,"You are inside reset...\n");
-	        send(client, data1,strlen(data1),0);
+		else if(strcmp(line,"RSET\n") ==0  )
+		{
+	        send(client,"250 Reset State Ok\n",20,0);
+			memset(line,0,strlen(line));
+	        memset(re_user,0,strlen(re_user));
+	        memset(data1,0,strlen(data1));
 		}
 		
     	else if(strstr(line,"HELO ") !=0 )
@@ -107,7 +105,6 @@ void* Child(void* arg)
              indexOf(fptr, rec_domain, &lin, &col);
     
             if (lin != -1 ){
-        	
 	            sprintf(data1,"Sorry! your domain is banned, you can not contenue...\n");
 	            send(client, data1,strlen(data1),0);
 	            close(client);
@@ -120,11 +117,9 @@ void* Child(void* arg)
     	
         else if(strstr(line,"MAIL FROM: ") != 0)
 		{
-
         	rec_email = strtok(line+11,"\n");
 
-        	//strcpy(rec_email_copy,rec_email);
-        	
+        	strcpy(re_email,rec_email);
 
 			/*Reading and checking from a file for ban email*/
             fptr = fopen("ban_email.cfg", "r");
@@ -137,108 +132,95 @@ void* Child(void* arg)
 	            sprintf(data1,"Sorry! your email is banned, you can not contenue...\n");
 	            send(client, data1,strlen(data1),0);
 	            close(client);
-     	    }else{
-             	sprintf(data1,"250 %s ... Sender ok\n",rec_email);
-             	send(client, data1,strlen(data1),0);
-             	
-	            }
-     	        fclose(fptr);
-        	
+     	    }
+			 else
+			{
+            	sprintf(data1,"250 %s ... Sender ok\n",rec_email);
+            	send(client, data1,strlen(data1),0);
+	        }
+     	       fclose(fptr);
 		}
-		else if(strstr(line,"RCPT TO: "))
+		
+		else if(strstr(line,"RCPT TO: ") !=0 )
 		{
 
-			strcpy(rec_username_copy,line);
-		//	rec_user_domain =strrchr(line,"@");
 			rec_username = strtok(line+9,"@");
-		//	rec_user_domain = strtok(NULL," ");
-
 			
+			memset(re_user,0,strlen(re_user));
+			strcpy(re_user,rec_username);
+			rec_user_domain = strtok(NULL," ");
+			strcpy(domain_cpy,rec_user_domain);
 
 
-			if((strcmp(rec_username,"joe") !=0) && (strcmp(rec_username,"jane") !=0) && (strcmp(rec_username,"bob") !=0))
+		    if((strcmp(rec_username,"joe") !=0) && (strcmp(rec_username,"jane") !=0) && (strcmp(rec_username,"bob") !=0))
 			{
 				//Note: If it was correct it will execute else otherwise inside if we execute
 				sprintf(data1,"Recipient user name is not exist!\n");
              	send(client, data1,strlen(data1),0);
-			}/*
-			else if ( strncmp(rec_user_domain,dom_name,strlen(rec_user_domain)) != 0 ){
-				sprintf(data1,"Recipient domain is not exist!: %s\t ,:%s",rec_user_domain,dom_name);
+			}
+		    else if ( strstr(domain_cpy,dom_name) == 0 ){
+				sprintf(data1,"Recipient domain is not exist!\n");
              	send(client, data1,strlen(data1),0);
-			}*/
+			}
 			else
 			{
 				sprintf(data1,"250 %s@foo.com ... Recipient ok\n",rec_username);
-             	send(client, data1,strlen(data1),0);
+            	send(client, data1,strlen(data1),0);
 			}
 		}
-		else if(strstr(line,"DATA\n"))
+		
+		else if(strstr(line,"DATA") != 0)
 		{
+			/*First Condition is for validation*/
+			if((strcmp("",re_user)== 0) && (strcmp("",re_email)==0))//validation
+            {
+				send(client,"You Missed One Step!\n",22,0);
+            }
+			else
+			{
+				sprintf(data1,"354 Enter mail, end with \".\" on a line by itself\n");
+	            send(client, data1,strlen(data1),0);
+	            /*For time */
+	            time_t ti = time(NULL);
+	            struct tm tm = *localtime(&ti);
 
-			sprintf(data1,"354 Enter mail, end with \".\" on a line by itself\n");
-            send(client, data1,strlen(data1),0);
-            /*For time */
-            time_t ti = time(NULL);
-            struct tm tm = *localtime(&ti);
+				char file_write[100];
+			    if(strcmp("joe",re_user)==0){
 
-			char file_write[40];
+	                sprintf(file_write,"%s%s/%02d%02d%02d%02d%02d.mbox",ser_root,joe_user1,tm.tm_year + 1900, tm.tm_mon + 1, tm.tm_mday, tm.tm_hour, tm.tm_min);
+				}else if(strcmp("jane",re_user)==0){
 
-			if(strlen(rec_line)>0){
-				rec_username_copy = strtok(rec_line+9,"@");
-				rec_user_domain = strtok(NULL," ");
+					sprintf(file_write,"%s%s/%02d%02d%02d%02d%02d.mbox",ser_root,jane_user2,tm.tm_year + 1900, tm.tm_mon + 1, tm.tm_mday, tm.tm_hour, tm.tm_min);
+				}else if(strcmp("bob",re_user)==0){
 
-			}else {
-				sprintf(data1,"First complete other option like RCPT TO:\n");
-             	send(client, data1,strlen(data1),0);
-             	//Rset flage should add here
-			}
-
-		    if(strcmp(rec_username_copy,"joe")==0){
+					sprintf(file_write,"%s%s/%02d%02d%02d%02d%02d.mbox",ser_root,bob_user3,tm.tm_year + 1900, tm.tm_mon + 1, tm.tm_mday, tm.tm_hour, tm.tm_min);
+				}
 				
-                sprintf(file_write,"%s%s/%d%d%d%d%d.mbox",ser_root,joe_user1,tm.tm_year + 1900, tm.tm_mon + 1, tm.tm_mday, tm.tm_hour, tm.tm_min);
-			}else if(strcmp(rec_username_copy,"jane")==0){
-
-				sprintf(file_write,"%s%s/%d%d%d%d%d.mbox",ser_root,jane_user2,tm.tm_year + 1900, tm.tm_mon + 1, tm.tm_mday, tm.tm_hour, tm.tm_min);
-			}else if(strcmp(rec_username_copy,"bob")==0){
-
-				sprintf(file_write,"%s%s/%d%d%d%d%d.mbox",ser_root,bob_user3,tm.tm_year + 1900, tm.tm_mon + 1, tm.tm_mday, tm.tm_hour, tm.tm_min);
-			}
-
-			fptr = fopen(file_write, "w");
-			sprintf(format,"Return-Path: < >\nReceived: from host.ciu.edu.tr ([212.175.150.10])\n\tby db.ciu.edu.tr with SMTP\n\tfor <%s @foo.com>\n");
-			fputs(format,fptr);
-			//rec_username_copy  test of segment fuilt
-		    do{
-		    	
-		        memset(line,0,strlen(line));
-		        bytes_read = recv(client, line, sizeof(line), 0);
-                fputs(line,fptr);
-              //  line[strcspn(line,"\n\r")] = 0;
-                
-			}while(strcmp(line,".\n") != 0);
-			 fclose(fptr);
-			 /*dataflag=1; hear one flage is important*/
-			 quit_flag = 1;
-			 sprintf(line,"250 Message accepted for delivery\n");
-             send(client, line,strlen(line),0);
+				fptr = fopen(file_write, "w");
+				sprintf(format,"Return-Path: < %s >\nReceived: from host.ciu.edu.tr ([212.175.150.10])\n\tby db.ciu.edu.tr with SMTP\n\tfor < %s@foo.com >\n",re_email,re_user);
+				strcpy(format1,format);
+				fputs(format1,fptr);
+			    do{
+			        memset(line,0,strlen(line));
+			        bytes_read = recv(client, line, sizeof(line), 0);
+	                fputs(line,fptr);
+				}while(strncmp(line,".\n",sizeof(".\n")) != 0);
+				fclose(fptr);
+				sprintf(line,"250 Message accepted for delivery\n");
+	            send(client, line,strlen(line),0);
+            }
 		}
-		else if((strcmp(line,"QUIT\n")==0 ) && (quit_flag == 0)){
+		else if((strcmp(line,"QUIT\n")==0 )){
+            send(client,"221 foo.com closing connection\n",33,0);
 			close (client);
-			//quit_flag = 0;
 		}
-	    else
+		else
 	    send(client, "Try again you enter wrong commend\n",35,0);
 	    
-		  /*  sprintf(data1,"Try again you enter wrong commend\n");
-		    send(client, line,strlen(line),0);*/
-
-
     } while (bytes_read > 0 );
     close (client);
-    
     return arg;
 }
-
 /*--------------------------------------------------------------------*/
 /*--- main - setup server and await connections (no need to clean  ---*/
 /*--- up after terminated children.                                ---*/
@@ -247,9 +229,10 @@ int main(int argc, char *argv[])
 {   int sd,opt,optval;
     struct sockaddr_in addr;
     unsigned short port=0;
-    int     status ;
     
-    status = parse_ini_file("Server.ini"); /*Function call of iniparser, which is reading from ini file*/
+    /*Function call of iniparser, which is reading from ini file*/
+    int     status ;
+    status = parse_ini_file("Server.ini"); 
 
     while ((opt = getopt(argc, argv, "p:")) != -1) {
         switch (opt) {
@@ -258,7 +241,6 @@ int main(int argc, char *argv[])
                 break;
         }
     }
-
 
     if ( (sd = socket(PF_INET, SOCK_STREAM, 0)) < 0 )
         PANIC("Socket");
@@ -269,7 +251,7 @@ int main(int argc, char *argv[])
     else
                 addr.sin_port = htons(listen_port);
 
-	if(strncmp(listen_IP,"ALL",strlen("All")))
+	if(strncmp(listen_IP,"All",strlen("All")))
     addr.sin_addr.s_addr = INADDR_ANY;
     else
     PANIC("Ip Address");
@@ -277,7 +259,6 @@ int main(int argc, char *argv[])
    // set SO_REUSEADDR on a socket to true (1):
    optval = 1;
    setsockopt(sd, SOL_SOCKET, SO_REUSEADDR, &optval, sizeof optval);
-
 
     if ( bind(sd, (struct sockaddr*)&addr, sizeof(addr)) != 0 )
         PANIC("Bind");
@@ -301,8 +282,9 @@ int main(int argc, char *argv[])
     return 0;
 }
 
-
-/*Checking for band domain and band email from a file*/
+/*-----------------------------------------------------------------------*/
+/*--- Function for checking for band domain and band email from a fil ---*/
+/*-----------------------------------------------------------------------*/
 int indexOf(FILE *fptr, const char *word, int *lin, int *col)
 {
     char str[BUFFER_SIZE];
@@ -327,8 +309,7 @@ int indexOf(FILE *fptr, const char *word, int *lin, int *col)
             break;
         }
     }
-
-
+    
     // If word is not found then set line to -1
     if (*col == -1)
         *lin = -1;
@@ -336,7 +317,9 @@ int indexOf(FILE *fptr, const char *word, int *lin, int *col)
     return *col;
 }
 
-/*For ini parser*/
+/*-----------------------------------------------------------------------*/
+/*---                Function for For ini parser                      ---*/
+/*-----------------------------------------------------------------------*/
 int parse_ini_file(char * ini_name)
 {
     dictionary  *   ini ;
@@ -365,7 +348,7 @@ int parse_ini_file(char * ini_name)
     domain_name = iniparser_getstring(ini, "server:DomainName", NULL);
     strcpy(dom_name ,domain_name);
     
-	/*we assign const char to char because outside the function we can take value.by help of strcpy*/
+	/*we copied const char to char because outside the function we can take value of cons char*/
     /* Get User attributes */
     joe_user = iniparser_getstring(ini, "users:joe", NULL);
     sprintf(joe_user1 ,"%s",joe_user);
@@ -379,13 +362,4 @@ int parse_ini_file(char * ini_name)
     return 0 ;
 }
 
-/*
-For time URL:
-https://stackoverflow.com/questions/1442116/how-to-
-get-the-date-and-time-values-in-a-c-program/1442131#1442131
-
-For function of checking a text URL:
-https://codeforwin.org/2018/02/c-program-find-occurrence-of-a-word-in-file.html#:~:
-text=I%20have%20used%20strstr(),exists%2C%20otherwise%20points%20to%20NULL%20.
-*/
 
